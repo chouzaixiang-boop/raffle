@@ -2,8 +2,9 @@ package org.example.raffle.repository.mysql;
 
 import org.example.raffle.domain.Strategy;
 import org.example.raffle.repository.StrategyRepository;
+import org.example.raffle.repository.mysql.mapper.StrategyMapper;
+import org.example.raffle.repository.mysql.po.StrategyRow;
 import org.springframework.context.annotation.Profile;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.util.Arrays;
@@ -14,35 +15,24 @@ import java.util.Optional;
 @Profile("!local")
 public class MySqlStrategyRepository implements StrategyRepository {
 
-    private final JdbcTemplate jdbcTemplate;
+    private final StrategyMapper strategyMapper;
 
-    public MySqlStrategyRepository(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    public MySqlStrategyRepository(StrategyMapper strategyMapper) {
+        this.strategyMapper = strategyMapper;
     }
 
     @Override
     public Optional<Strategy> findById(Long strategyId) {
-        return jdbcTemplate.query(
-                "select strategy_id, strategy_desc, rule_models from strategy where strategy_id = ?",
-                (resultSet, rowNum) -> new Strategy(
-                        resultSet.getLong("strategy_id"),
-                        resultSet.getString("strategy_desc"),
-                        splitCsv(resultSet.getString("rule_models"))
-                ),
-                strategyId
-        ).stream().findFirst();
+        return Optional.ofNullable(strategyMapper.findByStrategyId(strategyId)).map(this::toDomain);
     }
 
     @Override
     public List<Strategy> findAll() {
-        return jdbcTemplate.query(
-                "select strategy_id, strategy_desc, rule_models from strategy order by id",
-                (resultSet, rowNum) -> new Strategy(
-                        resultSet.getLong("strategy_id"),
-                        resultSet.getString("strategy_desc"),
-                        splitCsv(resultSet.getString("rule_models"))
-                )
-        );
+        return strategyMapper.findAll().stream().map(this::toDomain).toList();
+    }
+
+    private Strategy toDomain(StrategyRow row) {
+        return new Strategy(row.getStrategyId(), row.getStrategyDesc(), splitCsv(row.getRuleModels()));
     }
 
     private List<String> splitCsv(String csv) {

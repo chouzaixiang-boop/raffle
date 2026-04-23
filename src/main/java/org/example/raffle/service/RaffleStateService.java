@@ -10,6 +10,8 @@ public interface RaffleStateService {
 
     int getStock(Long strategyId, Long awardId);
 
+    void setStock(Long strategyId, Long awardId, int stock);
+
     Long getConsolationAwardId();
 
     String getAwardName(Long awardId);

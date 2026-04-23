@@ -43,6 +43,25 @@ public class InMemoryStrategyAwardRepository implements StrategyAwardRepository 
 
     @Override
     public void updateSurplus(Long strategyId, Long awardId, int surplus) {
-        // no-op for in-memory repository
+        List<StrategyAward> awards = awardsByStrategy.get(strategyId);
+        if (awards == null) {
+            return;
+        }
+        for (int index = 0; index < awards.size(); index++) {
+            StrategyAward item = awards.get(index);
+            if (item.awardId().equals(awardId)) {
+                awards.set(index, new StrategyAward(
+                        item.strategyId(),
+                        item.awardId(),
+                        item.awardTitle(),
+                        item.ruleModels(),
+                        item.awardAllocate(),
+                        surplus,
+                        item.awardRate(),
+                        item.awardIndex()
+                ));
+                break;
+            }
+        }
     }
 }

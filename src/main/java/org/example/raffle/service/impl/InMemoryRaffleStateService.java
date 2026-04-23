@@ -58,6 +58,11 @@ public class InMemoryRaffleStateService implements RaffleStateService {
     }
 
     @Override
+    public void setStock(Long strategyId, Long awardId, int stock) {
+        stockMap.put(key(strategyId, awardId), new AtomicInteger(stock));
+    }
+
+    @Override
     public Long getConsolationAwardId() {
         return CONSOLATION_AWARD_ID;
     }

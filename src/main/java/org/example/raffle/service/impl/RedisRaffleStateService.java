@@ -53,6 +53,11 @@ public class RedisRaffleStateService implements RaffleStateService {
     }
 
     @Override
+    public void setStock(Long strategyId, Long awardId, int stock) {
+        redisTemplate.opsForValue().set(stockKey(strategyId, awardId), String.valueOf(stock));
+    }
+
+    @Override
     public Long getConsolationAwardId() {
         return CONSOLATION_AWARD_ID;
     }
@@ -65,7 +70,7 @@ public class RedisRaffleStateService implements RaffleStateService {
     }
 
     public void initializeStock(Long strategyId, Long awardId, int stock) {
-        redisTemplate.opsForValue().set(stockKey(strategyId, awardId), String.valueOf(stock));
+        setStock(strategyId, awardId, stock);
     }
 
     private String stockKey(Long strategyId, Long awardId) {
