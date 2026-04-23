@@ -4,6 +4,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
+import org.example.raffle.repository.mysql.po.StockDeltaRow;
 import org.example.raffle.repository.mysql.po.StrategyAwardRow;
 
 import java.util.List;
@@ -39,4 +40,22 @@ public interface StrategyAwardMapper {
             where strategy_id = #{strategyId} and award_id = #{awardId}
             """)
     int updateSurplus(@Param("strategyId") Long strategyId, @Param("awardId") Long awardId, @Param("surplus") int surplus);
+
+        @Update("""
+                        <script>
+                        update strategy_award
+                        set award_surplus = case
+                        <foreach collection='items' item='item'>
+                                when strategy_id = #{item.strategyId} and award_id = #{item.awardId}
+                                then greatest(award_surplus - #{item.decreaseCount}, 0)
+                        </foreach>
+                        else award_surplus
+                        end
+                        where (strategy_id, award_id) in
+                        <foreach collection='items' item='item' open='(' separator=',' close=')'>
+                                (#{item.strategyId}, #{item.awardId})
+                        </foreach>
+                        </script>
+                        """)
+        int batchDecreaseSurplus(@Param("items") List<StockDeltaRow> items);
 }

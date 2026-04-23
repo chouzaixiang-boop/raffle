@@ -3,6 +3,7 @@ package org.example.raffle.repository.mysql;
 import org.example.raffle.domain.StrategyAward;
 import org.example.raffle.repository.StrategyAwardRepository;
 import org.example.raffle.repository.mysql.mapper.StrategyAwardMapper;
+import org.example.raffle.repository.mysql.po.StockDeltaRow;
 import org.example.raffle.repository.mysql.po.StrategyAwardRow;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
@@ -42,6 +43,13 @@ public class MySqlStrategyAwardRepository implements StrategyAwardRepository {
     @Override
     public void updateSurplus(Long strategyId, Long awardId, int surplus) {
         strategyAwardMapper.updateSurplus(strategyId, awardId, surplus);
+    }
+
+    public void batchDecreaseSurplus(List<StockDeltaRow> items) {
+        if (items == null || items.isEmpty()) {
+            return;
+        }
+        strategyAwardMapper.batchDecreaseSurplus(items);
     }
 
     private StrategyAward toDomain(StrategyAwardRow row) {
