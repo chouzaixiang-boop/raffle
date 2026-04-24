@@ -1,8 +1,10 @@
 package org.example.raffle.config;
 
+import org.example.raffle.domain.Activity;
 import org.example.raffle.domain.Award;
 import org.example.raffle.domain.Strategy;
 import org.example.raffle.domain.StrategyAward;
+import org.example.raffle.repository.memory.InMemoryActivityRepository;
 import org.example.raffle.repository.memory.InMemoryAwardRepository;
 import org.example.raffle.repository.memory.InMemoryRuleRepository;
 import org.example.raffle.repository.memory.InMemoryStrategyAwardRepository;
@@ -22,6 +24,7 @@ public class DemoDataConfiguration {
 
     @Bean
     CommandLineRunner initDemoData(InMemoryAwardRepository awardRepository,
+                                   InMemoryActivityRepository activityRepository,
                                    InMemoryStrategyRepository strategyRepository,
                                    InMemoryStrategyAwardRepository strategyAwardRepository,
                                    InMemoryRuleRepository ruleRepository,
@@ -31,6 +34,9 @@ public class DemoDataConfiguration {
             awardRepository.put(new Award(201L, "五元优惠券", "virtual", "5", "小额优惠券"));
             awardRepository.put(new Award(202L, "充电宝", "physical", "1", "实物奖品"));
             awardRepository.put(new Award(203L, "笔记本电脑", "physical", "1", "大奖"));
+
+            activityRepository.put(new Activity(20001L, "618 大促", "618 主题抽奖活动", 1001L, "618 抽奖", "天天抽大奖", "/images/activity-618.png", "#ff6a00", 1, 1));
+            activityRepository.put(new Activity(20002L, "周年庆", "周年庆主题抽奖活动", 1002L, "周年庆抽奖", "参与就有机会", "/images/activity-anniversary.png", "#1f8ef1", 2, 1));
 
             strategyRepository.put(new Strategy(1001L, "默认抽奖策略", List.of("rule_blacklist", "rule_weight")));
             strategyRepository.put(new Strategy(1002L, "加权抽奖策略", List.of()));

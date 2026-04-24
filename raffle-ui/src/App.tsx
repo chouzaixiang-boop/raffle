@@ -1,17 +1,18 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Gift, MessageSquare, User, Settings, Sparkles } from 'lucide-react';
 import './App.css';
 
-const PRIZES = [
-  { id: 201, name: 'iPhone 15', icon: '📱', pos: 0 },
-  { id: 202, name: '100元红包', icon: '🧧', pos: 1 },
-  { id: 203, name: '华为平板', icon: '💻', pos: 2 },
-  { id: 204, name: '小米手环', icon: '⌚', pos: 5 },
-  { id: 205, name: '50元话费', icon: '📞', pos: 8 },
-  { id: 206, name: '积分+50', icon: '💎', pos: 7 },
-  { id: 207, name: '谢谢惠顾', icon: '☕', pos: 6 },
-  { id: 208, name: '精美礼品', icon: '🎁', pos: 3 },
-];
+interface ActivityOption {
+  activityId: number;
+  activityName: string;
+  strategyId: number;
+}
+
+interface Prize {
+  id: number;
+  name: string;
+  pos: number;
+}
 
 const indexToGridPos = [0, 1, 2, 5, 8, 7, 6, 3];
 
@@ -21,71 +22,98 @@ export default function App() {
   const [activeIndex, setActiveIndex] = useState(-1);
   const [showModal, setShowModal] = useState(false);
   const [result, setResult] = useState<any>(null);
+
+  const [activities, setActivities] = useState<ActivityOption[]>([]);
+  const [selectedActivityId, setSelectedActivityId] = useState<number | null>(null);
+  const [currentStrategyId, setCurrentStrategyId] = useState<number | null>(null);
+  const [prizes, setPrizes] = useState<Prize[]>([]);
   
   const timerRef = useRef<any>(null);
   const targetIdRef = useRef<number | null>(null);
 
+  useEffect(() => {
+    const fetchActivities = async () => {
+      try {
+        const response = await fetch('/api/raffle/activities');
+        const data = await response.json();
+        setActivities(data);
+        if (data.length > 0) handleActivityChange(data[0].activityId);
+      } catch (err) { console.error(err); }
+    };
+    fetchActivities();
+  }, []);
+
+  const handleActivityChange = async (activityId: number) => {
+    setSelectedActivityId(activityId);
+    try {
+      const response = await fetch(`/api/raffle/activities/${activityId}`);
+      const data = await response.json();
+      setCurrentStrategyId(data.strategyId);
+
+      const backendPrizes = (data.prizes || []).filter((p: any) => !p.awardName.includes('谢谢惠顾'));
+      const newPrizes: Prize[] = new Array(8);
+
+      let prizeCursor = 0;
+      for (let i = 0; i < 8; i++) {
+        if (i % 2 === 0 && prizeCursor < backendPrizes.length) {
+          const bp = backendPrizes[prizeCursor++];
+          newPrizes[i] = { id: bp.awardId, name: bp.awardName, pos: indexToGridPos[i] };
+        } else {
+          newPrizes[i] = { id: 101, name: '谢谢惠顾', pos: indexToGridPos[i] }; // 统一 ID 为 101
+        }
+      }
+      setPrizes(newPrizes);
+    } catch (err) { console.error(err); }
+  };
+
   const startAnimation = () => {
     let currentStep = 0;
-    let speed = 40; // 初始极速
+    let speed = 40;
 
     const run = () => {
       setActiveIndex(indexToGridPos[currentStep % 8]);
       currentStep++;
-
       const targetId = targetIdRef.current;
 
-      // 停止策略：
-      // 1. 必须已经拿到了后端结果 (targetId !== null)
-      // 2. 为了视觉效果，最少也要转够 8 步（一整圈）
       if (targetId !== null && currentStep >= 8) {
-        const currentAward = PRIZES.find(p => p.pos === indexToGridPos[(currentStep - 1) % 8]);
+        const currentAward = prizes.find(p => p.pos === indexToGridPos[(currentStep - 1) % 8]);
         
-        // 匹配逻辑：ID 匹配，或者 101L 兜底到谢谢惠顾 (id: 207)
-        const isMatch = currentAward?.id === targetId || (targetId === 101 && currentAward?.id === 207);
-
-        if (isMatch) {
+        // 核心修复：只要 ID 匹配（包括我们统一设定的 101），就停止
+        if (currentAward?.id === targetId) {
           clearTimeout(timerRef.current);
           setTimeout(() => {
             setIsDrawing(false);
             setShowModal(true);
-          }, 150); // 停顿一下弹出，体验更好
+          }, 150);
           return;
         }
-        speed = 80; // 接近目标时稍微慢一点点，显得更真实
+        speed = 80;
       }
-
       timerRef.current = setTimeout(run, speed);
     };
-
     run();
   };
 
   const handleDraw = async () => {
-    if (isDrawing) return;
-    
+    if (isDrawing || !currentStrategyId) return;
     setIsDrawing(true);
     setResult(null);
     setShowModal(false);
     targetIdRef.current = null;
-
-    // 1. 立即启动视觉动画
     startAnimation();
 
-    // 2. 并行请求后端
     try {
       const response = await fetch('/api/raffle/draw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: 200001, strategyId: 1001 })
+        body: JSON.stringify({ userId: 200001, strategyId: currentStrategyId })
       });
-      
       const data = await response.json();
       setResult(data);
-      targetIdRef.current = data.awardId; // 瞬间标记目标 ID
+      targetIdRef.current = data.awardId; // 此时 targetId 可能为 101
     } catch (error) {
-      targetIdRef.current = 207; // 报错自动停在谢谢惠顾
-      setResult({ success: false, awardName: '系统繁忙' });
+      targetIdRef.current = 101; 
+      setResult({ success: false, awardName: '抽奖失败' });
     }
   };
 
@@ -105,26 +133,22 @@ export default function App() {
 
       <main className="main-view">
         <header className="header">
-          <h1>幸运抽奖</h1>
-          <p>Real-time Rewards System</p>
+          <div><h1>幸运抽奖</h1><p style={{ color: 'var(--text-secondary)' }}>Premium Rewards System</p></div>
+          <div className="activity-selector">
+            <label>活动切换</label>
+            <select className="custom-select" value={selectedActivityId || ''} onChange={(e) => handleActivityChange(Number(e.target.value))}>
+              {activities.map(act => (<option key={act.activityId} value={act.activityId}>{act.activityName}</option>))}
+            </select>
+          </div>
         </header>
 
         {activeTab === 'raffle' ? (
           <div className="raffle-container">
             <div className="grid">
               {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => {
-                if (i === 4) return (
-                  <button key={i} className="draw-btn" onClick={handleDraw} disabled={isDrawing}>
-                    {isDrawing ? '...' : 'GO'}
-                  </button>
-                );
-                const prize = PRIZES.find(p => p.pos === i);
-                return (
-                  <div key={i} className={`cell ${activeIndex === i ? 'active' : ''}`}>
-                    <span className="prize-icon">{prize?.icon}</span>
-                    <span className="prize-name">{prize?.name}</span>
-                  </div>
-                );
+                if (i === 4) return (<button key={i} className="draw-btn" onClick={handleDraw} disabled={isDrawing}>{isDrawing ? '...' : 'GO'}</button>);
+                const prize = prizes.find(p => p.pos === i);
+                return (<div key={i} className={`cell ${activeIndex === i ? 'active' : ''}`}><span className="prize-name">{prize?.name}</span></div>);
               })}
             </div>
           </div>

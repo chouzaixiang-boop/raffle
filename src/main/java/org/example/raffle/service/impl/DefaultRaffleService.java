@@ -1,5 +1,9 @@
 package org.example.raffle.service.impl;
 
+import org.example.raffle.domain.Activity;
+import org.example.raffle.domain.ActivityOptionResponse;
+import org.example.raffle.domain.ActivityPageResponse;
+import org.example.raffle.domain.ActivityPrizeResponse;
 import org.example.raffle.domain.Award;
 import org.example.raffle.domain.RaffleContext;
 import org.example.raffle.domain.RaffleRecord;
@@ -9,6 +13,7 @@ import org.example.raffle.domain.StockAssembleCommand;
 import org.example.raffle.domain.StockAssembleResult;
 import org.example.raffle.domain.Strategy;
 import org.example.raffle.domain.StrategyAward;
+import org.example.raffle.repository.ActivityRepository;
 import org.example.raffle.repository.AwardRepository;
 import org.example.raffle.repository.RaffleRecordRepository;
 import org.example.raffle.repository.RuleRepository;
@@ -39,6 +44,7 @@ public class DefaultRaffleService implements RaffleService {
     private final StrategyRepository strategyRepository;
     private final StrategyAwardRepository strategyAwardRepository;
     private final AwardRepository awardRepository;
+    private final ActivityRepository activityRepository;
     private final RuleRepository ruleRepository;
     private final RaffleRecordRepository raffleRecordRepository;
     private final RuleHandlerRegistry ruleHandlerRegistry;
@@ -49,6 +55,7 @@ public class DefaultRaffleService implements RaffleService {
     public DefaultRaffleService(StrategyRepository strategyRepository,
                                 StrategyAwardRepository strategyAwardRepository,
                                 AwardRepository awardRepository,
+                                ActivityRepository activityRepository,
                                 RuleRepository ruleRepository,
                                 RaffleRecordRepository raffleRecordRepository,
                                 RuleHandlerRegistry ruleHandlerRegistry,
@@ -57,6 +64,7 @@ public class DefaultRaffleService implements RaffleService {
         this.strategyRepository = strategyRepository;
         this.strategyAwardRepository = strategyAwardRepository;
         this.awardRepository = awardRepository;
+        this.activityRepository = activityRepository;
         this.ruleRepository = ruleRepository;
         this.raffleRecordRepository = raffleRecordRepository;
         this.ruleHandlerRegistry = ruleHandlerRegistry;
@@ -125,6 +133,55 @@ public class DefaultRaffleService implements RaffleService {
 
         logDrawTiming(userId, strategyId, context, stopWatch);
         return result;
+    }
+
+        @Override
+        public ActivityPageResponse getActivityPage(Long activityId) {
+        Activity activity = activityRepository.findById(activityId)
+            .orElseThrow(() -> new IllegalArgumentException("activity not found: " + activityId));
+        Strategy strategy = strategyRepository.findById(activity.strategyId())
+            .orElseThrow(() -> new IllegalArgumentException("strategy not found for activity: " + activityId));
+
+        List<ActivityPrizeResponse> prizes = strategyAwardRepository.findByStrategyId(activity.strategyId())
+            .stream()
+            .map(item -> {
+                Award award = awardRepository.findById(item.awardId()).orElse(null);
+                String awardName = award == null ? item.awardTitle() : award.awardName();
+                return new ActivityPrizeResponse(
+                    item.awardId(),
+                    awardName,
+                    item.awardTitle(),
+                    item.awardRate(),
+                    item.awardAllocate(),
+                    item.awardSurplus(),
+                    item.awardIndex()
+                );
+            })
+            .toList();
+
+        return new ActivityPageResponse(
+            activity.activityId(),
+            activity.activityName(),
+            activity.activityDesc(),
+            activity.strategyId(),
+            strategy.strategyDesc(),
+            activity.pageTitle(),
+            activity.pageSubtitle(),
+            activity.bannerUrl(),
+            activity.themeColor(),
+            prizes
+        );
+        }
+
+    @Override
+    public List<ActivityOptionResponse> listActivities() {
+        return activityRepository.findAllEnabled().stream()
+                .map(activity -> new ActivityOptionResponse(
+                        activity.activityId(),
+                        activity.activityName(),
+                        activity.strategyId()
+                ))
+                .toList();
     }
 
     @Override

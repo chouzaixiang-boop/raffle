@@ -6,6 +6,7 @@ DROP TABLE IF EXISTS raffle_record;
 DROP TABLE IF EXISTS strategy_rule;
 DROP TABLE IF EXISTS strategy_award;
 DROP TABLE IF EXISTS strategy;
+DROP TABLE IF EXISTS activity;
 DROP TABLE IF EXISTS award;
 
 CREATE TABLE award (
@@ -27,6 +28,23 @@ CREATE TABLE strategy (
     PRIMARY KEY (id),
     UNIQUE KEY uk_strategy_id (strategy_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='策略表';
+
+CREATE TABLE activity (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+    activity_id BIGINT NOT NULL COMMENT '活动ID',
+    activity_name VARCHAR(128) NOT NULL COMMENT '活动名称',
+    activity_desc VARCHAR(255) DEFAULT NULL COMMENT '活动描述',
+    strategy_id BIGINT NOT NULL COMMENT '绑定策略ID',
+    page_title VARCHAR(128) NOT NULL COMMENT '页面标题',
+    page_subtitle VARCHAR(255) DEFAULT NULL COMMENT '页面副标题',
+    banner_url VARCHAR(255) DEFAULT NULL COMMENT '页面横幅',
+    theme_color VARCHAR(32) DEFAULT NULL COMMENT '主题颜色',
+    sort_no INT NOT NULL DEFAULT 0 COMMENT '排序',
+    status TINYINT NOT NULL DEFAULT 1 COMMENT '状态(1:启用,0:停用)',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_activity_id (activity_id),
+    KEY idx_activity_strategy (strategy_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='活动表';
 
 CREATE TABLE strategy_award (
     id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
@@ -77,6 +95,10 @@ INSERT INTO award(award_id, award_type, award_name, award_value, award_desc) VAL
 INSERT INTO strategy(strategy_id, strategy_desc, rule_models) VALUES
 (1001, '默认抽奖策略', 'rule_blacklist,rule_weight'),
 (1002, '加权抽奖策略', '');
+
+INSERT INTO activity(activity_id, activity_name, activity_desc, strategy_id, page_title, page_subtitle, banner_url, theme_color, sort_no, status) VALUES
+(20001, '618 大促', '618 主题抽奖活动', 1001, '618 抽奖', '天天抽大奖', '/images/activity-618.png', '#ff6a00', 1, 1),
+(20002, '周年庆', '周年庆主题抽奖活动', 1002, '周年庆抽奖', '参与就有机会', '/images/activity-anniversary.png', '#1f8ef1', 2, 1);
 
 INSERT INTO strategy_award(strategy_id, award_id, rule_models, award_title, award_allocate, award_surplus, award_rate, award_index) VALUES
 (1001, 101, '', '谢谢惠顾', 0, 0, 0.0000, 0),

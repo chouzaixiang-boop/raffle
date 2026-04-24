@@ -1,12 +1,16 @@
 package org.example.raffle.api;
 
+import org.example.raffle.domain.ActivityOptionResponse;
 import org.example.raffle.domain.RaffleResult;
+import org.example.raffle.domain.ActivityPageResponse;
 import org.example.raffle.domain.StockAssembleBatchResult;
 import org.example.raffle.domain.StockAssembleCommand;
 import org.example.raffle.domain.StockAssembleResult;
 import org.example.raffle.service.RaffleService;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -29,6 +33,19 @@ public class RaffleController {
         }
         RaffleResult result = raffleService.draw(request.userId(), request.strategyId());
         return new DrawResponse(result.userId(), result.strategyId(), result.awardId(), result.awardName(), result.success(), result.message());
+    }
+
+    @GetMapping("/activities/{activityId}")
+    public ActivityPageResponse getActivityPage(@PathVariable Long activityId) {
+        if (activityId == null) {
+            throw new IllegalArgumentException("activityId is required");
+        }
+        return raffleService.getActivityPage(activityId);
+    }
+
+    @GetMapping("/activities")
+    public List<ActivityOptionResponse> listActivities() {
+        return raffleService.listActivities();
     }
 
     @PostMapping("/assemble/stock")

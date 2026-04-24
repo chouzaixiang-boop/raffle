@@ -68,11 +68,53 @@ body {
   align-items: center;
 }
 
+/* 标题区域与选择器布局 */
 .header {
   width: 100%;
   max-width: 600px;
   margin-bottom: 40px;
-  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.activity-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.activity-selector label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.custom-select {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  min-width: 200px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s;
+}
+
+.custom-select:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--accent);
+}
+
+.custom-select option {
+  background: var(--bg-card);
+  color: white;
 }
 
 .header h1 {
@@ -118,8 +160,14 @@ body {
   transform: scale(1.02);
 }
 
-.prize-icon { font-size: 2.5rem; margin-bottom: 8px; }
-.prize-name { font-size: 0.9rem; font-weight: 600; color: var(--text-secondary); }
+.prize-name { 
+  font-size: 1.1rem; 
+  font-weight: 700; 
+  color: var(--text-primary); 
+  text-align: center;
+  padding: 0 10px;
+  line-height: 1.4;
+}
 
 .draw-btn {
   grid-column: 2;
