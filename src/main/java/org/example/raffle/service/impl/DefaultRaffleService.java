@@ -1,5 +1,6 @@
 package org.example.raffle.service.impl;
 
+import org.example.raffle.domain.Award;
 import org.example.raffle.domain.RaffleContext;
 import org.example.raffle.domain.RaffleRecord;
 import org.example.raffle.domain.RaffleResult;
