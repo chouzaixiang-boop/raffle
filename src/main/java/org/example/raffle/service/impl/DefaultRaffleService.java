@@ -15,6 +15,8 @@ import org.example.raffle.repository.StrategyAwardRepository;
 import org.example.raffle.repository.StrategyRepository;
 import org.example.raffle.rule.RuleHandler;
 import org.example.raffle.rule.RuleHandlerRegistry;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.example.raffle.service.RaffleService;
 import org.example.raffle.service.RaffleStateService;
 import org.slf4j.Logger;
@@ -40,6 +42,7 @@ public class DefaultRaffleService implements RaffleService {
     private final RaffleRecordRepository raffleRecordRepository;
     private final RuleHandlerRegistry ruleHandlerRegistry;
     private final RaffleStateService raffleStateService;
+    private final Timer persistRecordTimer;
     private final Random random = new Random();
 
     public DefaultRaffleService(StrategyRepository strategyRepository,
@@ -48,7 +51,8 @@ public class DefaultRaffleService implements RaffleService {
                                 RuleRepository ruleRepository,
                                 RaffleRecordRepository raffleRecordRepository,
                                 RuleHandlerRegistry ruleHandlerRegistry,
-                                RaffleStateService raffleStateService) {
+                                RaffleStateService raffleStateService,
+                                MeterRegistry meterRegistry) {
         this.strategyRepository = strategyRepository;
         this.strategyAwardRepository = strategyAwardRepository;
         this.awardRepository = awardRepository;
@@ -56,6 +60,9 @@ public class DefaultRaffleService implements RaffleService {
         this.raffleRecordRepository = raffleRecordRepository;
         this.ruleHandlerRegistry = ruleHandlerRegistry;
         this.raffleStateService = raffleStateService;
+        this.persistRecordTimer = Timer.builder("raffle.persist.record.duration")
+                .description("Persist raffle record duration")
+                .register(meterRegistry);
     }
 
     @Override
@@ -79,7 +86,7 @@ public class DefaultRaffleService implements RaffleService {
             stopWatch.stop();
 
             stopWatch.start("persistRecord");
-            RaffleResult result = persist(context);
+            RaffleResult result = persistWithMetrics(context);
             stopWatch.stop();
 
             logDrawTiming(userId, strategyId, context, stopWatch);
@@ -112,7 +119,7 @@ public class DefaultRaffleService implements RaffleService {
         }
 
         stopWatch.start("persistRecord");
-        RaffleResult result = persist(context);
+        RaffleResult result = persistWithMetrics(context);
         stopWatch.stop();
 
         logDrawTiming(userId, strategyId, context, stopWatch);
@@ -240,6 +247,15 @@ public class DefaultRaffleService implements RaffleService {
         RaffleResult result = new RaffleResult(context.getUserId(), context.getStrategyId(), context.getAwardId(), context.getAwardName(), context.isSuccess(), context.getMessage());
         raffleRecordRepository.save(new RaffleRecord(context.getUserId(), context.getStrategyId(), context.getAwardId(), context.getAwardName(), context.isSuccess(), context.getMessage(), Instant.now()));
         return result;
+    }
+
+    private RaffleResult persistWithMetrics(RaffleContext context) {
+        Timer.Sample sample = Timer.start();
+        try {
+            return persist(context);
+        } finally {
+            sample.stop(persistRecordTimer);
+        }
     }
 
     private void logDrawTiming(Long userId, Long strategyId, RaffleContext context, StopWatch stopWatch) {

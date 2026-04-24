@@ -238,6 +238,38 @@ scripts\k6\run-ramp-test.ps1 -BaseUrl http://127.0.0.1:8080 -StrategyId 1001 -Rp
 2. MySQL 慢查询、锁等待、连接池等待是否上升。
 3. Redis 慢日志和网络延迟是否异常。
 
+### 极限性能探索脚本（自动找最大稳定 RPS）
+
+- [scripts/k6/raffle-draw-limit-stage.js](scripts/k6/raffle-draw-limit-stage.js)
+- [scripts/k6/run-limit-explore.ps1](scripts/k6/run-limit-explore.ps1)
+
+Windows 一键执行：
+
+```powershell
+cd D:\PythonProjects\raffle
+scripts\k6\run-limit-explore.ps1 -BaseUrl http://127.0.0.1:8080 -StrategyId 1001
+```
+
+默认会按 `200,300,400,500,600,700,800,900,1000,1200 RPS` 逐档执行，每档 `1m`。脚本会基于以下条件自动判定“稳定/不稳定”：
+
+- `p95 <= 200ms`
+- `http_req_failed <= 1%`
+- `dropped_iterations ratio <= 1%`
+
+并输出 `Max stable RPS` 作为当前极限吞吐参考。
+
+你可以按需调整阈值，例如：
+
+```powershell
+scripts\k6\run-limit-explore.ps1 `
+  -BaseUrl http://127.0.0.1:8080 `
+  -StrategyId 1001 `
+  -RpsList 300,500,700,900,1100 `
+  -Duration 90s `
+  -P95TargetMs 300 `
+  -DroppedRatioTarget 0.02
+```
+
 ### 阶梯测试后的固定检查清单
 
 每一档压测结束后，建议固定执行以下检查：

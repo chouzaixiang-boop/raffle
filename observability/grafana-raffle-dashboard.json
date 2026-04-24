@@ -1,0 +1,175 @@
+{
+  "dashboard": {
+    "title": "Raffle Performance Monitoring",
+    "description": "Monitor raffle application performance, connection pool, and database metrics",
+    "tags": ["raffle", "performance"],
+    "timezone": "browser",
+    "schemaVersion": 27,
+    "version": 1,
+    "refresh": "5s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "Hikari Connection Pool - Active",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "hikaricp_connections_active{job=\"raffle-app\"}",
+            "legendFormat": "Active Connections",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"label": "Count", "format": "short"}
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Hikari Connection Pool - Pending",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "hikaricp_connections_pending{job=\"raffle-app\"}",
+            "legendFormat": "Waiting for Connection",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"label": "Count", "format": "short"}
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"type": "gt", "params": [0]},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "reducer": {"type": "avg"},
+              "type": "query"
+            }
+          ],
+          "message": "⚠️ Connections are waiting in queue, possible bottleneck"
+        }
+      },
+      {
+        "id": 3,
+        "title": "PersistRecord Timing - Average",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.5, raffle_persist_record_duration_seconds_bucket{job=\"raffle-app\"})",
+            "legendFormat": "p50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, raffle_persist_record_duration_seconds_bucket{job=\"raffle-app\"})",
+            "legendFormat": "p95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, raffle_persist_record_duration_seconds_bucket{job=\"raffle-app\"})",
+            "legendFormat": "p99",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {"label": "Seconds", "format": "s"}
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Raffle Draw RPS (QPS)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "rate(raffle_draw_total{job=\"raffle-app\"}[1m])",
+            "legendFormat": "Requests Per Second",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"label": "RPS", "format": "short"}
+        ]
+      },
+      {
+        "id": 5,
+        "title": "MySQL Innodb Row Lock Waits",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "mysql_global_status_innodb_row_lock_waits{job=\"mysql\"}",
+            "legendFormat": "Lock Waits",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"label": "Count", "format": "short"}
+        ]
+      },
+      {
+        "id": 6,
+        "title": "MySQL Innodb Log Waits (Flush Pressure)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "targets": [
+          {
+            "expr": "rate(mysql_global_status_innodb_log_waits{job=\"mysql\"}[1m])",
+            "legendFormat": "Log Flush Waits/sec",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"label": "Waits/sec", "format": "short"}
+        ],
+        "alert": {
+          "message": "⚠️ InnoDB log flush pressure high, check innodb_flush_log_at_trx_commit setting"
+        }
+      },
+      {
+        "id": 7,
+        "title": "JVM Heap Memory Usage",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "jvm_memory_used_bytes{job=\"raffle-app\", area=\"heap\"}",
+            "legendFormat": "Heap Used",
+            "refId": "A"
+          },
+          {
+            "expr": "jvm_memory_max_bytes{job=\"raffle-app\", area=\"heap\"}",
+            "legendFormat": "Heap Max",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"label": "Bytes", "format": "bytes"}
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Stock WriteBack Queue Size",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+        "targets": [
+          {
+            "expr": "raffle_stock_writeback_queue_size{job=\"raffle-app\"}",
+            "legendFormat": "Pending Items",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"label": "Count", "format": "short"}
+        ]
+      }
+    ]
+  }
+}

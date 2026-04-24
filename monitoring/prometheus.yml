@@ -1,0 +1,14 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'raffle-monitor'
+
+scrape_configs:
+  # Spring Boot 应用（Windows）
+  - job_name: 'raffle-app'
+    static_configs:
+      - targets: ['192.168.80.128:8080']
+    metrics_path: '/actuator/prometheus'
+    scrape_interval: 5s
+    scrape_timeout: 5s
