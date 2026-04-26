@@ -3,6 +3,7 @@ CREATE DATABASE raffle_db DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_
 USE raffle_db;
 
 DROP TABLE IF EXISTS raffle_record;
+DROP TABLE IF EXISTS award_task;
 DROP TABLE IF EXISTS strategy_rule;
 DROP TABLE IF EXISTS strategy_award;
 DROP TABLE IF EXISTS strategy;
@@ -85,6 +86,21 @@ CREATE TABLE raffle_record (
     PRIMARY KEY (id),
     KEY idx_raffle_record_user_strategy (user_id, strategy_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='中奖记录表';
+
+CREATE TABLE award_task (
+    task_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '任务ID',
+    user_id BIGINT NOT NULL COMMENT '用户ID',
+    strategy_id BIGINT NOT NULL COMMENT '策略ID',
+    award_id BIGINT NOT NULL COMMENT '奖品ID',
+    award_name VARCHAR(128) NOT NULL COMMENT '奖品名称',
+    task_status VARCHAR(32) NOT NULL COMMENT '任务状态(PENDING/PROCESSING/AWARDED/FAILED)',
+    version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本',
+    create_time DATETIME NOT NULL COMMENT '创建时间',
+    PRIMARY KEY (task_id),
+    UNIQUE KEY uk_award_task_id (task_id),
+    KEY idx_award_task_user_strategy (user_id, strategy_id),
+    KEY idx_award_task_status_time (task_status, create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='发奖任务表';
 
 INSERT INTO award(award_id, award_type, award_name, award_value, award_desc) VALUES
 (101, 2, '谢谢惠顾', '0', '兜底奖品'),

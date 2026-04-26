@@ -1,6 +1,7 @@
 package org.example.raffle.api;
 
 import org.example.raffle.domain.ActivityOptionResponse;
+import org.example.raffle.domain.AwardTask;
 import org.example.raffle.domain.RaffleResult;
 import org.example.raffle.domain.ActivityPageResponse;
 import org.example.raffle.domain.StockAssembleBatchResult;
@@ -32,7 +33,7 @@ public class RaffleController {
             throw new IllegalArgumentException("userId and strategyId are required");
         }
         RaffleResult result = raffleService.draw(request.userId(), request.strategyId());
-        return new DrawResponse(result.userId(), result.strategyId(), result.awardId(), result.awardName(), result.success(), result.message());
+        return new DrawResponse(result.userId(), result.strategyId(), result.awardId(), result.awardName(), result.taskId(), result.success(), result.message());
     }
 
     @GetMapping("/activities/{activityId}")
@@ -46,6 +47,14 @@ public class RaffleController {
     @GetMapping("/activities")
     public List<ActivityOptionResponse> listActivities() {
         return raffleService.listActivities();
+    }
+
+    @GetMapping("/tasks/{taskId}")
+    public AwardTask getAwardTask(@PathVariable Long taskId) {
+        if (taskId == null) {
+            throw new IllegalArgumentException("taskId is required");
+        }
+        return raffleService.getAwardTask(taskId);
     }
 
     @PostMapping("/assemble/stock")

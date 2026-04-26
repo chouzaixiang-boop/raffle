@@ -1,12 +1,14 @@
 package org.example.raffle.service.impl;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.example.raffle.domain.Activity;
 import org.example.raffle.domain.ActivityOptionResponse;
 import org.example.raffle.domain.ActivityPageResponse;
 import org.example.raffle.domain.ActivityPrizeResponse;
 import org.example.raffle.domain.Award;
+import org.example.raffle.domain.AwardTask;
 import org.example.raffle.domain.RaffleContext;
-import org.example.raffle.domain.RaffleRecord;
 import org.example.raffle.domain.RaffleResult;
 import org.example.raffle.domain.StockAssembleBatchResult;
 import org.example.raffle.domain.StockAssembleCommand;
@@ -15,14 +17,12 @@ import org.example.raffle.domain.Strategy;
 import org.example.raffle.domain.StrategyAward;
 import org.example.raffle.repository.ActivityRepository;
 import org.example.raffle.repository.AwardRepository;
-import org.example.raffle.repository.RaffleRecordRepository;
+import org.example.raffle.repository.AwardTaskRepository;
 import org.example.raffle.repository.RuleRepository;
 import org.example.raffle.repository.StrategyAwardRepository;
 import org.example.raffle.repository.StrategyRepository;
 import org.example.raffle.rule.RuleHandler;
 import org.example.raffle.rule.RuleHandlerRegistry;
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Timer;
 import org.example.raffle.service.RaffleService;
 import org.example.raffle.service.RaffleStateService;
 import org.slf4j.Logger;
@@ -31,7 +31,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StopWatch;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -44,31 +43,34 @@ public class DefaultRaffleService implements RaffleService {
     private final StrategyRepository strategyRepository;
     private final StrategyAwardRepository strategyAwardRepository;
     private final AwardRepository awardRepository;
+    private final AwardTaskRepository awardTaskRepository;
     private final ActivityRepository activityRepository;
     private final RuleRepository ruleRepository;
-    private final RaffleRecordRepository raffleRecordRepository;
     private final RuleHandlerRegistry ruleHandlerRegistry;
     private final RaffleStateService raffleStateService;
+    private final RaffleDrawTransactionService raffleDrawTransactionService;
     private final Timer persistRecordTimer;
     private final Random random = new Random();
 
     public DefaultRaffleService(StrategyRepository strategyRepository,
                                 StrategyAwardRepository strategyAwardRepository,
                                 AwardRepository awardRepository,
+                                AwardTaskRepository awardTaskRepository,
                                 ActivityRepository activityRepository,
                                 RuleRepository ruleRepository,
-                                RaffleRecordRepository raffleRecordRepository,
                                 RuleHandlerRegistry ruleHandlerRegistry,
                                 RaffleStateService raffleStateService,
+                                RaffleDrawTransactionService raffleDrawTransactionService,
                                 MeterRegistry meterRegistry) {
         this.strategyRepository = strategyRepository;
         this.strategyAwardRepository = strategyAwardRepository;
         this.awardRepository = awardRepository;
+        this.awardTaskRepository = awardTaskRepository;
         this.activityRepository = activityRepository;
         this.ruleRepository = ruleRepository;
-        this.raffleRecordRepository = raffleRecordRepository;
         this.ruleHandlerRegistry = ruleHandlerRegistry;
         this.raffleStateService = raffleStateService;
+        this.raffleDrawTransactionService = raffleDrawTransactionService;
         this.persistRecordTimer = Timer.builder("raffle.persist.record.duration")
                 .description("Persist raffle record duration")
                 .register(meterRegistry);
@@ -135,43 +137,43 @@ public class DefaultRaffleService implements RaffleService {
         return result;
     }
 
-        @Override
-        public ActivityPageResponse getActivityPage(Long activityId) {
+    @Override
+    public ActivityPageResponse getActivityPage(Long activityId) {
         Activity activity = activityRepository.findById(activityId)
-            .orElseThrow(() -> new IllegalArgumentException("activity not found: " + activityId));
+                .orElseThrow(() -> new IllegalArgumentException("activity not found: " + activityId));
         Strategy strategy = strategyRepository.findById(activity.strategyId())
-            .orElseThrow(() -> new IllegalArgumentException("strategy not found for activity: " + activityId));
+                .orElseThrow(() -> new IllegalArgumentException("strategy not found for activity: " + activityId));
 
         List<ActivityPrizeResponse> prizes = strategyAwardRepository.findByStrategyId(activity.strategyId())
-            .stream()
-            .map(item -> {
-                Award award = awardRepository.findById(item.awardId()).orElse(null);
-                String awardName = award == null ? item.awardTitle() : award.awardName();
-                return new ActivityPrizeResponse(
-                    item.awardId(),
-                    awardName,
-                    item.awardTitle(),
-                    item.awardRate(),
-                    item.awardAllocate(),
-                    item.awardSurplus(),
-                    item.awardIndex()
-                );
-            })
-            .toList();
+                .stream()
+                .map(item -> {
+                    Award award = awardRepository.findById(item.awardId()).orElse(null);
+                    String awardName = award == null ? item.awardTitle() : award.awardName();
+                    return new ActivityPrizeResponse(
+                            item.awardId(),
+                            awardName,
+                            item.awardTitle(),
+                            item.awardRate(),
+                            item.awardAllocate(),
+                            item.awardSurplus(),
+                            item.awardIndex()
+                    );
+                })
+                .toList();
 
         return new ActivityPageResponse(
-            activity.activityId(),
-            activity.activityName(),
-            activity.activityDesc(),
-            activity.strategyId(),
-            strategy.strategyDesc(),
-            activity.pageTitle(),
-            activity.pageSubtitle(),
-            activity.bannerUrl(),
-            activity.themeColor(),
-            prizes
+                activity.activityId(),
+                activity.activityName(),
+                activity.activityDesc(),
+                activity.strategyId(),
+                strategy.strategyDesc(),
+                activity.pageTitle(),
+                activity.pageSubtitle(),
+                activity.bannerUrl(),
+                activity.themeColor(),
+                prizes
         );
-        }
+    }
 
     @Override
     public List<ActivityOptionResponse> listActivities() {
@@ -246,6 +248,12 @@ public class DefaultRaffleService implements RaffleService {
         return results;
     }
 
+    @Override
+    public AwardTask getAwardTask(Long taskId) {
+        return awardTaskRepository.findById(taskId)
+                .orElseThrow(() -> new IllegalArgumentException("award task not found: " + taskId));
+    }
+
     private void applyRules(List<String> ruleModels, RaffleContext context) {
         for (String ruleModel : ruleModels) {
             long ruleStartTime = System.nanoTime();
@@ -302,9 +310,7 @@ public class DefaultRaffleService implements RaffleService {
     }
 
     private RaffleResult persist(RaffleContext context) {
-        RaffleResult result = new RaffleResult(context.getUserId(), context.getStrategyId(), context.getAwardId(), context.getAwardName(), context.isSuccess(), context.getMessage());
-        raffleRecordRepository.save(new RaffleRecord(context.getUserId(), context.getStrategyId(), context.getAwardId(), context.getAwardName(), context.isSuccess(), context.getMessage(), Instant.now()));
-        return result;
+        return raffleDrawTransactionService.persist(context);
     }
 
     private RaffleResult persistWithMetrics(RaffleContext context) {
