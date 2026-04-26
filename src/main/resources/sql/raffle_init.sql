@@ -4,6 +4,7 @@ USE raffle_db;
 
 DROP TABLE IF EXISTS raffle_record;
 DROP TABLE IF EXISTS award_task;
+DROP TABLE IF EXISTS award_received;
 DROP TABLE IF EXISTS strategy_rule;
 DROP TABLE IF EXISTS strategy_award;
 DROP TABLE IF EXISTS strategy;
@@ -101,6 +102,22 @@ CREATE TABLE award_task (
     KEY idx_award_task_user_strategy (user_id, strategy_id),
     KEY idx_award_task_status_time (task_status, create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='发奖任务表';
+
+CREATE TABLE award_received (
+    received_id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+    task_id BIGINT NOT NULL COMMENT '任务ID',
+    user_id BIGINT NOT NULL COMMENT '用户ID',
+    strategy_id BIGINT NOT NULL COMMENT '策略ID',
+    award_id BIGINT NOT NULL COMMENT '奖品ID',
+    award_name VARCHAR(128) NOT NULL COMMENT '奖品名称',
+    receive_status VARCHAR(32) NOT NULL COMMENT '领奖状态(RECEIVED)',
+    receive_time DATETIME NOT NULL COMMENT '领奖时间',
+    create_time DATETIME NOT NULL COMMENT '创建时间',
+    PRIMARY KEY (received_id),
+    UNIQUE KEY uk_award_received_task_id (task_id),
+    KEY idx_award_received_user_strategy (user_id, strategy_id),
+    KEY idx_award_received_status_time (receive_status, receive_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户获奖表';
 
 INSERT INTO award(award_id, award_type, award_name, award_value, award_desc) VALUES
 (101, 2, '谢谢惠顾', '0', '兜底奖品'),

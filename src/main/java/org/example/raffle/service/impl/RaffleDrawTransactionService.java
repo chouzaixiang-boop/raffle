@@ -8,6 +8,8 @@ import org.example.raffle.repository.AwardTaskRepository;
 import org.example.raffle.repository.RaffleRecordRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 
@@ -16,11 +18,14 @@ public class RaffleDrawTransactionService {
 
     private final RaffleRecordRepository raffleRecordRepository;
     private final AwardTaskRepository awardTaskRepository;
+    private final AwardStreamPublisher awardStreamPublisher;
 
     public RaffleDrawTransactionService(RaffleRecordRepository raffleRecordRepository,
-                                        AwardTaskRepository awardTaskRepository) {
+                                        AwardTaskRepository awardTaskRepository,
+                                        AwardStreamPublisher awardStreamPublisher) {
         this.raffleRecordRepository = raffleRecordRepository;
         this.awardTaskRepository = awardTaskRepository;
+        this.awardStreamPublisher = awardStreamPublisher;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -38,6 +43,7 @@ public class RaffleDrawTransactionService {
                     Instant.now()
             ));
             taskId = savedTask.taskId();
+            registerAfterCommitPublish(savedTask);
         }
 
         RaffleResult result = new RaffleResult(
@@ -61,5 +67,18 @@ public class RaffleDrawTransactionService {
         ));
 
         return result;
+    }
+
+    private void registerAfterCommitPublish(AwardTask savedTask) {
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
+            awardStreamPublisher.publish(savedTask);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                awardStreamPublisher.publish(savedTask);
+            }
+        });
     }
 }

@@ -14,8 +14,9 @@
 - 模块 1 已完成：抽奖结果落库已拆分为独立事务服务 `RaffleDrawTransactionService`
 - 模块 2 已完成：Redis 库存扣减保持原子 `DECR`，并保留回滚保护
 - 模块 3 已完成：已新增 `award_task` 任务表的领域对象、仓储、MyBatis mapper，并在抽奖成功时创建 `PENDING` 任务
+- 模块 4 已完成：已接入 Redis Stream 发奖发布与消费，消费者会把任务状态从 `PENDING` 推进到 `PROCESSING` 再到 `AWARDED`，并同步写入 `award_received` 用户获奖表
 - 当前可用验证接口：`POST /api/raffle/draw`、`GET /api/raffle/tasks/{taskId}`、`GET /api/raffle/stock/current?strategyId=...&awardId=...`
-- 下一步：接入 Redis Stream 发奖消费
+- 下一步：细化发奖状态机与退款前置约束
 
 ---
 
