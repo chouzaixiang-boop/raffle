@@ -41,6 +41,15 @@ public interface StrategyAwardMapper {
             """)
     int updateSurplus(@Param("strategyId") Long strategyId, @Param("awardId") Long awardId, @Param("surplus") int surplus);
 
+    @Update("""
+            update strategy_award
+            set award_surplus = least(award_surplus + #{increaseCount}, award_allocate)
+            where strategy_id = #{strategyId} and award_id = #{awardId}
+            """)
+    int increaseSurplusWithCap(@Param("strategyId") Long strategyId,
+                               @Param("awardId") Long awardId,
+                               @Param("increaseCount") int increaseCount);
+
         @Update("""
                         <script>
                         update strategy_award

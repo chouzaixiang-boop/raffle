@@ -64,4 +64,34 @@ public class InMemoryStrategyAwardRepository implements StrategyAwardRepository 
             }
         }
     }
+
+    @Override
+    public int increaseSurplusWithCap(Long strategyId, Long awardId, int increaseCount) {
+        if (increaseCount <= 0) {
+            StrategyAward current = findByStrategyIdAndAwardId(strategyId, awardId);
+            return current.awardSurplus();
+        }
+        List<StrategyAward> awards = awardsByStrategy.get(strategyId);
+        if (awards == null) {
+            throw new IllegalArgumentException("strategy awards not found: " + strategyId);
+        }
+        for (int index = 0; index < awards.size(); index++) {
+            StrategyAward item = awards.get(index);
+            if (item.awardId().equals(awardId)) {
+                int next = Math.min(item.awardAllocate(), item.awardSurplus() + increaseCount);
+                awards.set(index, new StrategyAward(
+                        item.strategyId(),
+                        item.awardId(),
+                        item.awardTitle(),
+                        item.ruleModels(),
+                        item.awardAllocate(),
+                        next,
+                        item.awardRate(),
+                        item.awardIndex()
+                ));
+                return next;
+            }
+        }
+        throw new IllegalArgumentException("award config not found: strategyId=" + strategyId + ", awardId=" + awardId);
+    }
 }

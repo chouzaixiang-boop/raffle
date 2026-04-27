@@ -1,0 +1,207 @@
+{
+  "info": {
+    "name": "raffle-stage-tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Phased Postman tests for raffle draw/award/refund/compensation flow"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:8080" },
+    { "key": "userId", "value": "10031" },
+    { "key": "strategyId", "value": "1001" },
+    { "key": "taskId", "value": "" },
+    { "key": "refundId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "A1 Draw Once",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"userId\": {{userId}},\n  \"strategyId\": {{strategyId}}\n}"
+        },
+        "url": "{{baseUrl}}/api/raffle/draw"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "const data = pm.response.json();",
+              "pm.test('draw response has success/taskId fields', function () {",
+              "  pm.expect(data).to.have.property('success');",
+              "  pm.expect(data).to.have.property('taskId');",
+              "});",
+              "if (data.taskId) { pm.collectionVariables.set('taskId', String(data.taskId)); }"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "A2 Query Task",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/raffle/tasks/{{taskId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "const data = pm.response.json();",
+              "pm.test('task has taskStatus', function () { pm.expect(data.taskStatus).to.be.a('string'); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "B1 Wait and Query Task Again",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/raffle/tasks/{{taskId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "const data = pm.response.json();",
+              "pm.test('task eventually moves to AWARDED or REFUNDED/FAILED', function () {",
+              "  pm.expect(['PENDING','PROCESSING','AWARDED','REFUNDED','FAILED']).to.include(data.taskStatus);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "C1 Query Refund Quota",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/raffle/refund/quota?userId={{userId}}&strategyId={{strategyId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "const data = pm.response.json();",
+              "pm.test('quota fields present', function () {",
+              "  pm.expect(data).to.have.property('usedCount');",
+              "  pm.expect(data).to.have.property('maxCount');",
+              "  pm.expect(data).to.have.property('remainingCount');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "C2 Apply Refund (Generate refundId)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const rid = 'refund-' + Date.now();",
+              "pm.collectionVariables.set('refundId', rid);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "const data = pm.response.json();",
+              "pm.test('refund response has accepted/status', function () {",
+              "  pm.expect(data).to.have.property('accepted');",
+              "  pm.expect(data).to.have.property('refundStatus');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refundId\": \"{{refundId}}\",\n  \"userId\": {{userId}},\n  \"taskId\": {{taskId}}\n}"
+        },
+        "url": "{{baseUrl}}/api/raffle/refund/apply"
+      }
+    },
+    {
+      "name": "C3 Apply Refund Idempotent Replay",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refundId\": \"{{refundId}}\",\n  \"userId\": {{userId}},\n  \"taskId\": {{taskId}}\n}"
+        },
+        "url": "{{baseUrl}}/api/raffle/refund/apply"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "const data = pm.response.json();",
+              "pm.test('idempotent request should be accepted or explicitly rejected as duplicate in-progress', function () {",
+              "  pm.expect(data).to.have.property('refundStatus');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "D1 Metrics Prometheus",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/actuator/prometheus"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('status is 200', function () { pm.response.to.have.status(200); });",
+              "const text = pm.response.text();",
+              "pm.test('compensation metric exposed', function () {",
+              "  pm.expect(text).to.include('raffle_award_compensation_scan_total');",
+              "});",
+              "pm.test('stream pending gauge exposed', function () {",
+              "  pm.expect(text).to.include('raffle_award_stream_pending_count');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ]
+}

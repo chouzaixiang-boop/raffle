@@ -11,7 +11,10 @@ public class AwardTaskRow {
     private String awardName;
     private String taskStatus;
     private Integer version;
+    private Integer retryCount;
+    private String failReason;
     private LocalDateTime createTime;
+    private LocalDateTime updateTime;
 
     public Long getTaskId() {
         return taskId;
@@ -69,11 +72,35 @@ public class AwardTaskRow {
         this.version = version;
     }
 
+    public Integer getRetryCount() {
+        return retryCount;
+    }
+
+    public void setRetryCount(Integer retryCount) {
+        this.retryCount = retryCount;
+    }
+
+    public String getFailReason() {
+        return failReason;
+    }
+
+    public void setFailReason(String failReason) {
+        this.failReason = failReason;
+    }
+
     public LocalDateTime getCreateTime() {
         return createTime;
     }
 
     public void setCreateTime(LocalDateTime createTime) {
         this.createTime = createTime;
+    }
+
+    public LocalDateTime getUpdateTime() {
+        return updateTime;
+    }
+
+    public void setUpdateTime(LocalDateTime updateTime) {
+        this.updateTime = updateTime;
     }
 }

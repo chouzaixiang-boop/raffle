@@ -8,13 +8,12 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 @Profile("!local")
 public class MySqlAwardTaskRepository implements AwardTaskRepository {
-
-    private static final String TASK_STATUS_PENDING = "PENDING";
 
     private final AwardTaskMapper awardTaskMapper;
 
@@ -32,7 +31,10 @@ public class MySqlAwardTaskRepository implements AwardTaskRepository {
         row.setAwardName(task.awardName());
         row.setTaskStatus(task.taskStatus());
         row.setVersion(task.version());
+        row.setRetryCount(task.retryCount());
+        row.setFailReason(task.failReason());
         row.setCreateTime(task.createTime().atZone(ZoneId.systemDefault()).toLocalDateTime());
+        row.setUpdateTime(task.updateTime().atZone(ZoneId.systemDefault()).toLocalDateTime());
         awardTaskMapper.insert(row);
         return new AwardTask(
                 row.getTaskId(),
@@ -42,7 +44,10 @@ public class MySqlAwardTaskRepository implements AwardTaskRepository {
                 row.getAwardName(),
                 row.getTaskStatus(),
                 row.getVersion() == null ? 0 : row.getVersion(),
-                row.getCreateTime().atZone(ZoneId.systemDefault()).toInstant()
+            row.getRetryCount() == null ? 0 : row.getRetryCount(),
+            row.getFailReason(),
+            row.getCreateTime().atZone(ZoneId.systemDefault()).toInstant(),
+            row.getUpdateTime().atZone(ZoneId.systemDefault()).toInstant()
         );
     }
 
@@ -56,8 +61,24 @@ public class MySqlAwardTaskRepository implements AwardTaskRepository {
     }
 
     @Override
+    public List<AwardTask> findStaleTasks(List<String> statuses, int staleSeconds, int limit) {
+        if (statuses == null || statuses.isEmpty() || staleSeconds <= 0 || limit <= 0) {
+            return List.of();
+        }
+        return awardTaskMapper.findStaleTasks(statuses, staleSeconds, limit)
+                .stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
+    @Override
     public int updateStatus(Long taskId, String currentStatus, String newStatus, int currentVersion) {
         return awardTaskMapper.updateStatus(taskId, currentStatus, newStatus, currentVersion);
+    }
+
+    @Override
+    public int markFailed(Long taskId, int currentVersion, String failReason) {
+        return awardTaskMapper.markFailed(taskId, currentVersion, failReason);
     }
 
     private AwardTask toDomain(AwardTaskRow row) {
@@ -69,7 +90,10 @@ public class MySqlAwardTaskRepository implements AwardTaskRepository {
                 row.getAwardName(),
                 row.getTaskStatus(),
                 row.getVersion() == null ? 0 : row.getVersion(),
-                row.getCreateTime().atZone(ZoneId.systemDefault()).toInstant()
+                row.getRetryCount() == null ? 0 : row.getRetryCount(),
+                row.getFailReason(),
+                row.getCreateTime().atZone(ZoneId.systemDefault()).toInstant(),
+                row.getUpdateTime().atZone(ZoneId.systemDefault()).toInstant()
         );
     }
 }

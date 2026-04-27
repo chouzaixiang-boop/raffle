@@ -9,5 +9,8 @@ public record AwardTask(Long taskId,
                         String awardName,
                         String taskStatus,
                         int version,
-                        Instant createTime) {
+                        int retryCount,
+                        String failReason,
+                        Instant createTime,
+                        Instant updateTime) {
 }

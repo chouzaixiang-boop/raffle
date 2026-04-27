@@ -3,15 +3,18 @@ package org.example.raffle.api;
 import org.example.raffle.domain.ActivityOptionResponse;
 import org.example.raffle.domain.AwardTask;
 import org.example.raffle.domain.RaffleResult;
+import org.example.raffle.domain.RefundQuota;
 import org.example.raffle.domain.ActivityPageResponse;
 import org.example.raffle.domain.StockAssembleBatchResult;
 import org.example.raffle.domain.StockAssembleCommand;
 import org.example.raffle.domain.StockAssembleResult;
 import org.example.raffle.service.RaffleService;
+import org.example.raffle.service.RefundService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,9 +25,12 @@ import java.util.List;
 public class RaffleController {
 
     private final RaffleService raffleService;
+    private final RefundService refundService;
 
-    public RaffleController(RaffleService raffleService) {
+    public RaffleController(RaffleService raffleService,
+                            RefundService refundService) {
         this.raffleService = raffleService;
+        this.refundService = refundService;
     }
 
     @PostMapping("/draw")
@@ -55,6 +61,24 @@ public class RaffleController {
             throw new IllegalArgumentException("taskId is required");
         }
         return raffleService.getAwardTask(taskId);
+    }
+
+    @PostMapping("/refund/apply")
+    public RefundApplyResponse applyRefund(@RequestBody RefundApplyRequest request) {
+        if (request == null || request.userId() == null || request.taskId() == null) {
+            throw new IllegalArgumentException("userId and taskId are required");
+        }
+        return refundService.applyRefund(request.refundId(), request.userId(), request.taskId());
+    }
+
+    @GetMapping("/refund/quota")
+    public RefundQuotaResponse getRefundQuota(@RequestParam Long userId, @RequestParam Long strategyId) {
+        if (userId == null || strategyId == null) {
+            throw new IllegalArgumentException("userId and strategyId are required");
+        }
+        RefundQuota quota = refundService.getQuota(userId, strategyId);
+        int remaining = Math.max(quota.maxCount() - quota.usedCount(), 0);
+        return new RefundQuotaResponse(quota.userId(), quota.strategyId(), quota.usedCount(), quota.maxCount(), remaining);
     }
 
     @PostMapping("/assemble/stock")

@@ -15,8 +15,14 @@
 - 模块 2 已完成：Redis 库存扣减保持原子 `DECR`，并保留回滚保护
 - 模块 3 已完成：已新增 `award_task` 任务表的领域对象、仓储、MyBatis mapper，并在抽奖成功时创建 `PENDING` 任务
 - 模块 4 已完成：已接入 Redis Stream 发奖发布与消费，消费者会把任务状态从 `PENDING` 推进到 `PROCESSING` 再到 `AWARDED`，并同步写入 `award_received` 用户获奖表
-- 当前可用验证接口：`POST /api/raffle/draw`、`GET /api/raffle/tasks/{taskId}`、`GET /api/raffle/stock/current?strategyId=...&awardId=...`
-- 下一步：细化发奖状态机与退款前置约束
+- 模块 5 已完成：发奖状态机已补齐 `FAILED` 分支，支持失败原因落库、重试计数与任务更新时间
+- 模块 6 已完成：已实现退款幂等与配额控制（`refundId` 幂等校验 + `user_refund_quota` 乐观锁扣减）
+- 模块 7 已完成：退款成功后已实现库存回补（`award_task: AWARDED -> REFUNDED` + MySQL capped 增量回补 + Redis 提交后回补）
+- 模块 8 已完成：已实现补偿任务与监控（超时 `PENDING/PROCESSING` 扫描补偿重投 + Stream 堆积监控与 Micrometer 指标）
+- 模块 9 已完成：已提供 Postman 分阶段测试资产（Collection + Environment + Runbook）
+- 当前可用验证接口：`POST /api/raffle/draw`、`GET /api/raffle/tasks/{taskId}`、`POST /api/raffle/refund/apply`、`GET /api/raffle/refund/quota`
+- Postman 资产位置：`docs/postman/raffle-stage-tests.postman_collection.json`、`docs/postman/raffle-local.postman_environment.json`、`docs/postman/POSTMAN-RUNBOOK.md`
+- 下一步：执行并记录 Postman 结果
 
 ---
 
@@ -258,7 +264,7 @@ Postman 测试点：
 #### 2. 请求接口
 
 - Method: POST
-- URL: /api/raffle/refund
+- URL: /api/raffle/refund/apply
 - Body:
   - userId
   - taskId

@@ -16,6 +16,7 @@ public class AwardTaskProcessService {
     private static final String STATUS_PENDING = "PENDING";
     private static final String STATUS_PROCESSING = "PROCESSING";
     private static final String STATUS_AWARDED = "AWARDED";
+    private static final String STATUS_FAILED = "FAILED";
 
     private final AwardTaskRepository awardTaskRepository;
     private final AwardReceivedRepository awardReceivedRepository;
@@ -40,24 +41,37 @@ public class AwardTaskProcessService {
             ensureAwardReceived(task);
             return true;
         }
+        if (STATUS_FAILED.equals(task.taskStatus())) {
+            return true;
+        }
 
         if (STATUS_PENDING.equals(task.taskStatus())) {
             int processingUpdated = awardTaskRepository.updateStatus(task.taskId(), STATUS_PENDING, STATUS_PROCESSING, task.version());
             if (processingUpdated <= 0) {
-                return false;
+                return true;
             }
             task = awardTaskRepository.findById(task.taskId()).orElse(task);
         }
 
         if (STATUS_PROCESSING.equals(task.taskStatus())) {
-            int awardedUpdated = awardTaskRepository.updateStatus(task.taskId(), STATUS_PROCESSING, STATUS_AWARDED, task.version());
-            if (awardedUpdated > 0) {
+            try {
                 ensureAwardReceived(task);
+                int awardedUpdated = awardTaskRepository.updateStatus(task.taskId(), STATUS_PROCESSING, STATUS_AWARDED, task.version());
+                return awardedUpdated > 0;
+            } catch (Exception ex) {
+                awardTaskRepository.markFailed(task.taskId(), task.version(), trimFailReason(ex.getMessage()));
+                return true;
             }
-            return awardedUpdated > 0;
         }
 
         return true;
+    }
+
+    private String trimFailReason(String failReason) {
+        if (failReason == null || failReason.isBlank()) {
+            return "award process failed";
+        }
+        return failReason.length() > 200 ? failReason.substring(0, 200) : failReason;
     }
 
     private void ensureAwardReceived(AwardTask task) {

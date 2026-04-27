@@ -52,6 +52,23 @@ public class InMemoryRaffleStateService implements RaffleStateService {
     }
 
     @Override
+    public int increaseStock(Long strategyId, Long awardId, int maxStock) {
+        if (maxStock < 0) {
+            throw new IllegalArgumentException("maxStock must be >= 0");
+        }
+        AtomicInteger stock = stockMap.computeIfAbsent(key(strategyId, awardId), key -> new AtomicInteger(0));
+        while (true) {
+            int current = stock.get();
+            if (current >= maxStock) {
+                return maxStock;
+            }
+            if (stock.compareAndSet(current, current + 1)) {
+                return current + 1;
+            }
+        }
+    }
+
+    @Override
     public int getStock(Long strategyId, Long awardId) {
         AtomicInteger stock = stockMap.get(key(strategyId, awardId));
         return stock == null ? 0 : stock.get();

@@ -32,6 +32,7 @@ public class RaffleDrawTransactionService {
     public RaffleResult persist(RaffleContext context) {
         Long taskId = null;
         if (context.isSuccess()) {
+            Instant now = Instant.now();
             AwardTask savedTask = awardTaskRepository.save(new AwardTask(
                     null,
                     context.getUserId(),
@@ -40,7 +41,10 @@ public class RaffleDrawTransactionService {
                     context.getAwardName(),
                     "PENDING",
                     0,
-                    Instant.now()
+                    0,
+                    null,
+                    now,
+                    now
             ));
             taskId = savedTask.taskId();
             registerAfterCommitPublish(savedTask);

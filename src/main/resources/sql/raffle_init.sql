@@ -3,6 +3,8 @@ CREATE DATABASE raffle_db DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_
 USE raffle_db;
 
 DROP TABLE IF EXISTS raffle_record;
+DROP TABLE IF EXISTS raffle_refund;
+DROP TABLE IF EXISTS user_refund_quota;
 DROP TABLE IF EXISTS award_task;
 DROP TABLE IF EXISTS award_received;
 DROP TABLE IF EXISTS strategy_rule;
@@ -94,9 +96,12 @@ CREATE TABLE award_task (
     strategy_id BIGINT NOT NULL COMMENT '策略ID',
     award_id BIGINT NOT NULL COMMENT '奖品ID',
     award_name VARCHAR(128) NOT NULL COMMENT '奖品名称',
-    task_status VARCHAR(32) NOT NULL COMMENT '任务状态(PENDING/PROCESSING/AWARDED/FAILED)',
+    task_status VARCHAR(32) NOT NULL COMMENT '任务状态(PENDING/PROCESSING/AWARDED/REFUNDED/FAILED)',
     version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本',
+    retry_count INT NOT NULL DEFAULT 0 COMMENT '失败重试次数',
+    fail_reason VARCHAR(255) DEFAULT NULL COMMENT '失败原因',
     create_time DATETIME NOT NULL COMMENT '创建时间',
+    update_time DATETIME NOT NULL COMMENT '更新时间',
     PRIMARY KEY (task_id),
     UNIQUE KEY uk_award_task_id (task_id),
     KEY idx_award_task_user_strategy (user_id, strategy_id),
@@ -118,6 +123,34 @@ CREATE TABLE award_received (
     KEY idx_award_received_user_strategy (user_id, strategy_id),
     KEY idx_award_received_status_time (receive_status, receive_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户获奖表';
+
+CREATE TABLE user_refund_quota (
+    user_id BIGINT NOT NULL COMMENT '用户ID',
+    strategy_id BIGINT NOT NULL COMMENT '策略ID',
+    used_count INT NOT NULL DEFAULT 0 COMMENT '已用退款次数',
+    max_count INT NOT NULL DEFAULT 3 COMMENT '最大退款次数',
+    version INT NOT NULL DEFAULT 0 COMMENT '乐观锁版本',
+    create_time DATETIME NOT NULL COMMENT '创建时间',
+    update_time DATETIME NOT NULL COMMENT '更新时间',
+    PRIMARY KEY (user_id, strategy_id),
+    KEY idx_refund_quota_strategy (strategy_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户退款配额表';
+
+CREATE TABLE raffle_refund (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+    refund_id VARCHAR(64) NOT NULL COMMENT '退款请求幂等号',
+    task_id BIGINT NOT NULL COMMENT '发奖任务ID',
+    user_id BIGINT NOT NULL COMMENT '用户ID',
+    strategy_id BIGINT NOT NULL COMMENT '策略ID',
+    award_id BIGINT NOT NULL COMMENT '奖品ID',
+    refund_status VARCHAR(32) NOT NULL COMMENT '退款状态(REQUESTED/REFUNDED/REJECTED)',
+    refund_message VARCHAR(255) DEFAULT NULL COMMENT '退款说明',
+    create_time DATETIME NOT NULL COMMENT '创建时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_raffle_refund_refund_id (refund_id),
+    UNIQUE KEY uk_raffle_refund_task_id (task_id),
+    KEY idx_raffle_refund_user_strategy (user_id, strategy_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='退款申请表';
 
 INSERT INTO award(award_id, award_type, award_name, award_value, award_desc) VALUES
 (101, 2, '谢谢惠顾', '0', '兜底奖品'),

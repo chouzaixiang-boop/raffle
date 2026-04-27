@@ -8,6 +8,8 @@ public interface RaffleStateService {
 
     int decreaseStock(Long strategyId, Long awardId);
 
+    int increaseStock(Long strategyId, Long awardId, int maxStock);
+
     int getStock(Long strategyId, Long awardId);
 
     void setStock(Long strategyId, Long awardId, int stock);

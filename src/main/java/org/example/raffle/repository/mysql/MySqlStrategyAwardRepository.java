@@ -45,6 +45,16 @@ public class MySqlStrategyAwardRepository implements StrategyAwardRepository {
         strategyAwardMapper.updateSurplus(strategyId, awardId, surplus);
     }
 
+    @Override
+    public int increaseSurplusWithCap(Long strategyId, Long awardId, int increaseCount) {
+        strategyAwardMapper.increaseSurplusWithCap(strategyId, awardId, increaseCount);
+        StrategyAwardRow row = strategyAwardMapper.findByStrategyIdAndAwardId(strategyId, awardId);
+        if (row == null || row.getAwardSurplus() == null) {
+            return 0;
+        }
+        return row.getAwardSurplus();
+    }
+
     public void batchDecreaseSurplus(List<StockDeltaRow> items) {
         if (items == null || items.isEmpty()) {
             return;

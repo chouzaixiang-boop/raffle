@@ -47,6 +47,22 @@ public class RedisRaffleStateService implements RaffleStateService {
     }
 
     @Override
+    public int increaseStock(Long strategyId, Long awardId, int maxStock) {
+        if (maxStock < 0) {
+            throw new IllegalArgumentException("maxStock must be >= 0");
+        }
+        Long remaining = redisTemplate.opsForValue().increment(stockKey(strategyId, awardId));
+        if (remaining == null) {
+            return -1;
+        }
+        if (remaining > maxStock) {
+            redisTemplate.opsForValue().decrement(stockKey(strategyId, awardId));
+            return maxStock;
+        }
+        return remaining.intValue();
+    }
+
+    @Override
     public int getStock(Long strategyId, Long awardId) {
         String value = redisTemplate.opsForValue().get(stockKey(strategyId, awardId));
         return value == null ? 0 : Integer.parseInt(value);

@@ -53,4 +53,11 @@ public class CachedStrategyAwardRepository implements StrategyAwardRepository {
         mySqlStrategyAwardRepository.updateSurplus(strategyId, awardId, surplus);
         cache.updateStrategyAwardSurplus(strategyId, awardId, surplus);
     }
+
+    @Override
+    public int increaseSurplusWithCap(Long strategyId, Long awardId, int increaseCount) {
+        int surplus = mySqlStrategyAwardRepository.increaseSurplusWithCap(strategyId, awardId, increaseCount);
+        cache.updateStrategyAwardSurplus(strategyId, awardId, surplus);
+        return surplus;
+    }
 }

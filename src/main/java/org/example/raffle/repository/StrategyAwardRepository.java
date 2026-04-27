@@ -13,4 +13,6 @@ public interface StrategyAwardRepository {
     StrategyAward findByStrategyIdAndAwardId(Long strategyId, Long awardId);
 
     void updateSurplus(Long strategyId, Long awardId, int surplus);
+
+    int increaseSurplusWithCap(Long strategyId, Long awardId, int increaseCount);
 }
